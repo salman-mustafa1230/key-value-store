@@ -16,10 +16,14 @@ if [ -n "${DB_URL:-}${DATABASE_URL:-}" ]; then echo "DB_URL=set" >&2; else echo 
 php artisan package:discover --ansi --no-interaction
 
 PORT="${PORT:-8000}"
+export PHP_CLI_SERVER_WORKERS="${PHP_CLI_SERVER_WORKERS:-8}"
 
-# Bind before migrate/swagger. Railway healthchecks fail with
-# "service unavailable" if nothing is listening on $PORT.
-php artisan serve --host=0.0.0.0 --port="${PORT}" &
+echo "Listening on 0.0.0.0:${PORT} workers=${PHP_CLI_SERVER_WORKERS}" >&2
+
+# php artisan serve is single-process; Railway healthchecks plus a browser
+# request starve it and the edge returns 502. The built-in server with workers
+# can accept more than one connection.
+php -S 0.0.0.0:"${PORT}" -t public docker/router.php &
 SERVE_PID=$!
 
 shutdown() {
@@ -31,7 +35,7 @@ trap shutdown TERM INT
 
 sleep 1
 if ! kill -0 "${SERVE_PID}" 2>/dev/null; then
-  echo "php artisan serve exited before it could listen on ${PORT}" >&2
+  echo "php -S exited before it could listen on ${PORT}" >&2
   wait "${SERVE_PID}" || true
   exit 1
 fi
