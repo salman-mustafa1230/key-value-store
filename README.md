@@ -2,6 +2,9 @@
 
 HTTP API for a version-controlled key-value store. PHP/Laravel, PostgreSQL.
 
+- **Live:** [https://key-value-store-app-production.up.railway.app/swagger](https://key-value-store-app-production.up.railway.app/swagger)
+- **Source:** [https://github.com/salman-mustafa1230/key-value-store](https://github.com/salman-mustafa1230/key-value-store)
+
 Domain language lives in [`CONTEXT.md`](CONTEXT.md). Decisions live in [`docs/adr/`](docs/adr/).
 
 ## Why the list is paginated
@@ -33,7 +36,7 @@ Walk `next_cursor` until it is null. Default page size is 50; maximum is 1000. H
 
 Errors: `{ "error": { "code", "message" } }` with 400 / 404 / 500.
 
-Interactive docs: [http://localhost:8000/swagger](http://localhost:8000/swagger) (or `/swagger` on Railway). OpenAPI JSON is at `/docs`.
+Interactive docs: [production Swagger](https://key-value-store-app-production.up.railway.app/swagger) or [http://localhost:8000/swagger](http://localhost:8000/swagger) locally. OpenAPI JSON is at `/docs`.
 
 ## Folder structure
 
@@ -137,13 +140,13 @@ Yes. GitHub Actions + Railway can run the whole pipeline. Pick **one** deploy tr
 
 | Event | Workflow | What runs |
 | --- | --- | --- |
-| Pull request | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PHPUnit, security scan, CodeQL, then Docker image **build** (no push). Docker waits for the three checks. |
+| Pull request | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PHPUnit with a coverage report, security scan, CodeQL, then Docker image **build** (no push). Docker waits for the three checks. |
 | Push / merge to `main` or `master` | same | Same checks. Production is **not** updated. Deploy is not in this workflow. |
 | GitHub Release (not a pre-release) | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Re-runs those checks, then **deploys** that tag to Railway if secrets exist |
 
 On every PR:
 
-- **PHPUnit** — API tests against Postgres
+- **PHPUnit** — API tests against Postgres. Clover XML + HTML coverage is uploaded as the **coverage-report** artifact (Actions → the run → Artifacts). The job summary shows statement coverage.
 - **Composer audit** — known-vulnerable PHP packages
 - **Trivy** — HIGH/CRITICAL vulnerabilities and leaked secrets
 - **CodeQL** — GitHub Actions workflow analysis (CodeQL does not support PHP)
@@ -155,7 +158,7 @@ A red security job fails the PR the same way a red test does. Dependabot (`.gith
 | Tool | Cost | What it does |
 | --- | --- | --- |
 | Dependabot | **Free** on GitHub Free (public and private) | Alerts + PRs for vulnerable/outdated Composer, Actions, and Docker images |
-| PHPUnit, Trivy, Composer audit | **Free** (GitHub Actions minutes; public repos are free) | Tests and security scan on every PR |
+| PHPUnit, coverage artifact, Trivy, Composer audit | **Free** (GitHub Actions minutes; public repos are free) | Tests, HTML/Clover coverage report, and security scan on every PR |
 | CodeQL | **Free** on public repos; private repos need GitHub Advanced Security on some plans | Static analysis of GitHub Actions workflows (PHP is not a CodeQL language) |
 | Copilot code review (`AGENTS.md`) | **Not free.** Copilot Free does **not** include PR auto-review. Needs Copilot Pro / Pro+ / Business | AI comments on the PR, using [`AGENTS.md`](AGENTS.md) |
 
