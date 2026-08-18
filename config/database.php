@@ -95,11 +95,8 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
-            'timezone' => 'UTC',
             'application_name' => env('DB_APPLICATION_NAME', 'key-value-store'),
             'sslmode' => env('DB_SSLMODE', env('APP_ENV') === 'production' ? 'require' : 'prefer'),
-            'isolation_level' => 'read committed',
             /*
              | PHP PDO does not multiplex like PgBouncer. This is the budget:
              | keep PHP workers / Octane clients at or below this number, and
@@ -109,6 +106,11 @@ return [
                 'max' => (int) env('DB_POOL_SIZE', 15),
             ],
             'session' => [
+                // Applied in one round trip on connect. Do not also set these
+                // as top-level pgsql keys — Laravel would issue extra SETs.
+                'timezone' => 'UTC',
+                'search_path' => 'public',
+                'isolation_level' => 'read committed',
                 'statement_timeout_ms' => (int) env('DB_STATEMENT_TIMEOUT_MS', 15000),
                 'idle_in_transaction_timeout_ms' => (int) env('DB_IDLE_IN_TX_TIMEOUT_MS', 30000),
                 'lock_timeout_ms' => (int) env('DB_LOCK_TIMEOUT_MS', 5000),

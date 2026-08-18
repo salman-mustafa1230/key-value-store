@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -13,8 +14,9 @@ return new class extends Migration
             $table->string('key', 64);
             $table->jsonb('value');
             $table->timestampTz('recorded_at', 6);
-            $table->index(['key', 'recorded_at']);
         });
+
+        DB::statement('create index key_versions_as_of_index on key_versions ("key", recorded_at desc, id desc)');
 
         Schema::create('key_snapshots', function (Blueprint $table) {
             $table->string('key', 64)->primary();
