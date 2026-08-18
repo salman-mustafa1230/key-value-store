@@ -146,7 +146,7 @@ On every PR:
 - **PHPUnit** — API tests against Postgres
 - **Composer audit** — known-vulnerable PHP packages
 - **Trivy** — HIGH/CRITICAL vulnerabilities and leaked secrets
-- **CodeQL** — GitHub PHP security analysis (also under the repo **Security** tab)
+- **CodeQL** — GitHub Actions workflow analysis (CodeQL does not support PHP)
 
 A red security job fails the PR the same way a red test does. Dependabot (`.github/dependabot.yml`) opens weekly PRs for Composer, Actions, and Docker base-image updates.
 
@@ -156,7 +156,7 @@ A red security job fails the PR the same way a red test does. Dependabot (`.gith
 | --- | --- | --- |
 | Dependabot | **Free** on GitHub Free (public and private) | Alerts + PRs for vulnerable/outdated Composer, Actions, and Docker images |
 | PHPUnit, Trivy, Composer audit | **Free** (GitHub Actions minutes; public repos are free) | Tests and security scan on every PR |
-| CodeQL | **Free** on public repos; private repos need GitHub Advanced Security on some plans | Static PHP analysis, Security tab |
+| CodeQL | **Free** on public repos; private repos need GitHub Advanced Security on some plans | Static analysis of GitHub Actions workflows (PHP is not a CodeQL language) |
 | Copilot code review (`AGENTS.md`) | **Not free.** Copilot Free does **not** include PR auto-review. Needs Copilot Pro / Pro+ / Business | AI comments on the PR, using [`AGENTS.md`](AGENTS.md) |
 
 [`AGENTS.md`](AGENTS.md) is in the repo so Copilot (or Cursor) follows this project’s review rules **if** you turn auto-review on. The file itself costs nothing. Automatic review on every PR is a Copilot paid feature: repo **Settings → Copilot → Code review → automatic reviews**, or request **Copilot** as a reviewer. Without that license, the free path is the Actions jobs above — they already run on every PR.
