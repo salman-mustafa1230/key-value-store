@@ -1,6 +1,6 @@
 # Versioned key-value store
 
-HTTP API for a version-controlled key-value store (Secretlab backend exercise). PHP/Laravel, PostgreSQL.
+HTTP API for a version-controlled key-value store. PHP/Laravel, PostgreSQL.
 
 Domain language lives in [`CONTEXT.md`](CONTEXT.md). Decisions live in [`docs/adr/`](docs/adr/).
 
@@ -201,4 +201,4 @@ Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Sec
 
 ## AI tools
 
-This submission was built with **Cursor** (agent-assisted implementation) guided by the Secretlab spec, `CONTEXT.md`, and the ADRs. The design (domain language, API semantics, Postgres, pagination) was decided in a review session and recorded before code. I remain responsible for the behavior, tests, and trade-offs.
+This project was built with **Cursor** (agent-assisted implementation) guided by `CONTEXT.md` and the ADRs. The design (domain language, API semantics, Postgres, pagination) was decided in a review session and recorded before code. I remain responsible for the behavior, tests, and trade-offs.
