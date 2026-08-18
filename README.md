@@ -192,7 +192,7 @@ Or GitHub → **Releases** → **Draft a new release**. Pre-releases do not depl
 
 Without those secrets, tests and the image build still run; deploy is skipped with a log line (so a dummy PR/merge stays green).
 
-Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. There is no Deploy job on PRs. After merge those run again. **Deploy to Railway** is the Release workflow, only when you publish a Release.
+Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. There is no Deploy job on PRs, and merge to `main` does not start CI again. **Deploy to Railway** is the Release workflow, only when you publish a Release.
 
 ## Scale later (not in this submission)
 
