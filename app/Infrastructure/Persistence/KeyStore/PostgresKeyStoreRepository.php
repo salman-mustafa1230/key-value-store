@@ -55,25 +55,24 @@ final class PostgresKeyStoreRepository implements KeyStoreRepository
 
             sort($keys);
 
-            foreach ($keys as $key) {
-                DB::select('SELECT pg_advisory_xact_lock(hashtext(?))', [$key]);
-            }
+            $keyList = array_values($keys);
+            $lockPlaceholders = implode(', ', array_fill(0, count($keyList), '(?)'));
+            DB::select(
+                "SELECT pg_advisory_xact_lock(hashtext(k)) FROM (VALUES {$lockPlaceholders}) AS t(k)",
+                $keyList,
+            );
 
-            foreach ($versions as $version) {
-                EloquentKeyVersion::query()->create([
+            $rows = array_map(
+                fn (Version $version): array => [
                     'key' => $version->key->value,
-                    'value' => $version->value->json,
+                    'value' => json_encode($version->value->json, JSON_THROW_ON_ERROR),
                     'recorded_at' => $version->recordedAt,
-                ]);
+                ],
+                $versions,
+            );
 
-                EloquentKeySnapshot::query()->updateOrCreate(
-                    ['key' => $version->key->value],
-                    [
-                        'value' => $version->value->json,
-                        'recorded_at' => $version->recordedAt,
-                    ],
-                );
-            }
+            DB::table('key_versions')->insert($rows);
+            DB::table('key_snapshots')->upsert($rows, ['key'], ['value', 'recorded_at']);
         });
     }
 

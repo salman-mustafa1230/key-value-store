@@ -16,18 +16,32 @@ final class ConfigurePostgresSession
 
         $session = config('database.connections.pgsql.session', []);
 
-        $statements = [
-            'statement_timeout' => (int) ($session['statement_timeout_ms'] ?? 0),
-            'idle_in_transaction_session_timeout' => (int) ($session['idle_in_transaction_timeout_ms'] ?? 0),
-            'lock_timeout' => (int) ($session['lock_timeout_ms'] ?? 0),
+        $configs = [
+            'TimeZone' => (string) ($session['timezone'] ?? 'UTC'),
+            'search_path' => (string) ($session['search_path'] ?? 'public'),
+            'default_transaction_isolation' => (string) ($session['isolation_level'] ?? 'read committed'),
+            'statement_timeout' => (string) ((int) ($session['statement_timeout_ms'] ?? 0)),
+            'lock_timeout' => (string) ((int) ($session['lock_timeout_ms'] ?? 0)),
+            'idle_in_transaction_session_timeout' => (string) ((int) ($session['idle_in_transaction_timeout_ms'] ?? 0)),
         ];
 
-        foreach ($statements as $setting => $milliseconds) {
-            if ($milliseconds <= 0) {
+        $selects = [];
+        $bindings = [];
+
+        foreach ($configs as $setting => $value) {
+            if ($value === '' || $value === '0') {
                 continue;
             }
 
-            $event->connection->statement("set {$setting} = {$milliseconds}");
+            $selects[] = 'set_config(?, ?, false)';
+            $bindings[] = $setting;
+            $bindings[] = $value;
         }
+
+        if ($selects === []) {
+            return;
+        }
+
+        $event->connection->select('select '.implode(', ', $selects), $bindings);
     }
 }
