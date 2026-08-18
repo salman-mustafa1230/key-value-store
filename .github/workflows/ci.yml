@@ -4,8 +4,7 @@ on:
   push:
     branches: [main, master]
   pull_request:
-  release:
-    types: [published]
+  workflow_call:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -98,7 +97,7 @@ jobs:
 
   docker:
     name: Build image
-    needs: test
+    needs: [test, security, codeql]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -113,37 +112,3 @@ jobs:
           tags: keystore:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  deploy:
-    name: Deploy to Railway
-    needs: [test, docker, security, codeql]
-    if: github.event_name == 'release' && github.event.release.prerelease == false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.release.tag_name }}
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: "22"
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
-        run: |
-          if [ -z "$RAILWAY_TOKEN" ]; then
-            echo "RAILWAY_TOKEN is not set. Skipping deploy."
-            echo "Add GitHub secrets RAILWAY_TOKEN and RAILWAY_SERVICE, or use Railway GitHub autodeploy with Wait for CI."
-            exit 0
-          fi
-          if [ -z "$RAILWAY_SERVICE" ]; then
-            echo "RAILWAY_SERVICE is not set (the Railway service name, e.g. app)."
-            exit 1
-          fi
-          echo "Deploying ${{ github.event.release.tag_name }} to Railway."
-          railway up --ci --service "$RAILWAY_SERVICE"
