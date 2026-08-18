@@ -83,26 +83,27 @@ If `keystore_test` is missing (volume already existed):
 docker compose exec postgres psql -U keystore -d keystore -c 'CREATE DATABASE keystore_test;'
 ```
 
+## Environments
+
+Two committed templates. Real `.env` / `.env.production` stay gitignored.
+
+| File | Use |
+| --- | --- |
+| [`.env.example`](.env.example) | **Local.** `cp .env.example .env` then `php artisan key:generate`. Debug on, SSL `prefer`, Compose Postgres. |
+| [`.env.production.example`](.env.production.example) | **Production.** Copy these names onto the Railway app service. Debug off, SSL `require`, logs to stderr, `DB_URL` from the Postgres plugin. |
+
+Staging is not in this submission. PHPUnit uses `APP_ENV=testing` in `phpunit.xml` and database `keystore_test`.
+
 ## Railway (free instance)
 
 Railway does **not** run `docker-compose.yml`. Compose is local Postgres only. Production Postgres is Railway’s managed plugin. The root `Dockerfile` is what Railway builds.
 
 1. Create a Railway project and add a **PostgreSQL** service.
 2. Deploy this repo as a service (GitHub or `railway up`). Railway will use `Dockerfile` (`railway.toml`).
-3. Variables on the **app** service:
+3. Variables on the **app** service: copy [`.env.production.example`](.env.production.example). Required secrets:
    - `APP_KEY` — `php artisan key:generate --show`
-   - `APP_ENV=production`
-   - `APP_DEBUG=false`
-   - `LOG_CHANNEL=stderr`
-   - `DB_CONNECTION=pgsql`
    - `DB_URL=${{Postgres.DATABASE_URL}}` (reference the plugin; Laravel also reads `DATABASE_URL`)
-   - `SESSION_DRIVER=array`
-   - `CACHE_STORE=array`
-   - `QUEUE_CONNECTION=sync`
-   - `DB_SSLMODE=require` (default in production if unset)
-   - `DB_POOL_SIZE=15`
-   - `DB_APPLICATION_NAME=key-value-store`
-   - `DB_PGBOUNCER=false` until a pooler is in front; then `true`
+   - `APP_URL` — the public Railway domain once you generate it
 4. Generate a public domain. Health check: `GET /up`.
 5. Migrations run on container start (`docker/start.sh`). The process listens on Railway’s `PORT`.
 
