@@ -138,7 +138,7 @@ Yes. GitHub Actions + Railway can run the whole pipeline. Pick **one** deploy tr
 | Event | Workflow | What runs |
 | --- | --- | --- |
 | Pull request | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PHPUnit, security scan, CodeQL, then Docker image **build** (no push). Docker waits for the three checks. |
-| Push / merge to `main` or `master` | same | Same checks. Production is **not** updated. Deploy is not in this workflow. |
+| Merge to `main` | — | No extra CI. The PR already ran the checks. |
 | GitHub Release (not a pre-release) | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Re-runs those checks, then **deploys** that tag to Railway if secrets exist |
 
 On every PR:
@@ -189,7 +189,7 @@ Or GitHub → **Releases** → **Draft a new release**. Pre-releases do not depl
 
 Without those secrets, tests and the image build still run; deploy is skipped with a log line (so a dummy PR/merge stays green).
 
-Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. There is no Deploy job on PRs. After merge those run again. **Deploy to Railway** is the Release workflow, only when you publish a Release.
+Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. There is no Deploy job on PRs, and merge to `main` does not start CI again. **Deploy to Railway** is the Release workflow, only when you publish a Release.
 
 ## Scale later (not in this submission)
 
