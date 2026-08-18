@@ -1,4 +1,5 @@
 *.log
+*.pdf
 .DS_Store
 .env
 .env.backup
@@ -13,6 +14,7 @@
 /.idea
 /.nova
 /.phpunit.cache
+/coverage
 /.vscode
 /.zed
 /auth.json

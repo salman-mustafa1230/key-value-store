@@ -37,15 +37,20 @@ final class KeyStoreApiTest extends TestCase
 
     public function test_get_all_records_is_the_current_snapshot(): void
     {
+        $this->travelTo(CarbonImmutable::createFromTimestampUTC(1_700_000_000));
         $this->postJson('/api/v1/object', ['alpha' => 1, 'beta' => 2])->assertCreated();
+
+        $this->travelTo(CarbonImmutable::createFromTimestampUTC(1_700_000_100));
         $this->postJson('/api/v1/object', ['alpha' => 9])->assertCreated();
 
         $this->getJson('/api/v1/object/get_all_records')
             ->assertOk()
             ->assertJsonPath('data.0.key', 'alpha')
             ->assertJsonPath('data.0.value', 9)
+            ->assertJsonPath('data.0.timestamp', 1_700_000_100)
             ->assertJsonPath('data.1.key', 'beta')
             ->assertJsonPath('data.1.value', 2)
+            ->assertJsonPath('data.1.timestamp', 1_700_000_000)
             ->assertJsonPath('next_cursor', null);
     }
 
@@ -83,6 +88,7 @@ final class KeyStoreApiTest extends TestCase
 
         $this->getJson('/api/v1/object/absent')
             ->assertNotFound()
+            ->assertHeader('content-type', 'application/json')
             ->assertJsonPath('error.code', 'key_not_found');
     }
 

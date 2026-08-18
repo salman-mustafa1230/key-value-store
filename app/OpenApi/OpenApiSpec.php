@@ -39,15 +39,6 @@ use OpenApi\Attributes as OA;
     ],
     type: 'object',
 )]
-#[OA\Schema(
-    schema: 'SnapshotItem',
-    required: ['key', 'value'],
-    properties: [
-        new OA\Property(property: 'key', type: 'string', example: 'mykey'),
-        new OA\Property(property: 'value', description: 'Latest JSON value for the key.', example: 'value1'),
-    ],
-    type: 'object',
-)]
 #[OA\Post(
     path: '/api/v1/object',
     operationId: 'storeObjects',
@@ -116,7 +107,7 @@ use OpenApi\Attributes as OA;
                     new OA\Property(
                         property: 'data',
                         type: 'array',
-                        items: new OA\Items(ref: '#/components/schemas/SnapshotItem'),
+                        items: new OA\Items(ref: '#/components/schemas/StoredVersion'),
                     ),
                     new OA\Property(property: 'next_cursor', type: 'string', nullable: true, example: null),
                 ],

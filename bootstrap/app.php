@@ -25,8 +25,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // 404/400 must not go through Monolog. If the log stream is closed
+        // (php -S workers on Railway), report() throws and the kernel never
+        // renders — empty HTML 500, nothing in Railway logs.
+        $exceptions->dontReport(ClientError::class);
+
         $exceptions->reportable(function (\Throwable $e): void {
-            fwrite(STDERR, $e->__toString().PHP_EOL);
+            try {
+                $line = $e->__toString();
+                error_log($line);
+                fwrite(STDERR, $line.PHP_EOL);
+            } catch (\Throwable) {
+            }
         });
 
         $exceptions->shouldRenderJsonWhen(
@@ -63,5 +73,18 @@ return Application::configure(basePath: dirname(__DIR__))
                     'message' => $e->getMessage() !== '' ? $e->getMessage() : 'HTTP error.',
                 ],
             ], $e->getStatusCode());
+        });
+
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if (! $request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'error' => [
+                    'code' => 'server_error',
+                    'message' => 'An unexpected error occurred.',
+                ],
+            ], 500);
         });
     })->create();

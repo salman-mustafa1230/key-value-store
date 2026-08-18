@@ -23,7 +23,8 @@ RUN rm -f bootstrap/cache/packages.php bootstrap/cache/services.php \
     && composer dump-autoload --optimize --no-dev --no-scripts \
     && mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs storage/api-docs bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache \
-    && chmod +x docker/start.sh
+    && chmod +x docker/start.sh \
+    && cp docker/php-errors.ini "$PHP_INI_DIR/conf.d/zz-errors.ini"
 
 ENV APP_ENV=production
 ENV LOG_CHANNEL=stderr

@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write
 
     services:
       postgres:
@@ -48,7 +49,50 @@ jobs:
       - run: cp .env.example .env && php artisan key:generate
 
       - name: Run tests with coverage
-        run: php artisan test --coverage
+        run: |
+          mkdir -p coverage
+          php artisan test --coverage --coverage-clover=coverage/clover.xml --coverage-html=coverage/html
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          php -r '
+          $file = "coverage/clover.xml";
+          if (!is_file($file)) {
+              fwrite(STDERR, "No clover.xml; skipping coverage summary.\n");
+              exit(0);
+          }
+          $xml = simplexml_load_file($file);
+          if ($xml === false) {
+              fwrite(STDERR, "Could not parse clover.xml.\n");
+              exit(1);
+          }
+          $metrics = $xml->project->metrics ?? $xml->metrics;
+          if ($metrics === null) {
+              fwrite(STDERR, "clover.xml has no project metrics.\n");
+              exit(1);
+          }
+          $covered = (int) $metrics["coveredstatements"];
+          $total = (int) $metrics["statements"];
+          $pct = $total === 0 ? 0.0 : round(100 * $covered / $total, 2);
+          $line = sprintf("**%s%%** (%d / %d statements)", $pct, $covered, $total);
+          echo "Coverage: {$pct}% ({$covered}/{$total} statements)\n";
+          $summary = getenv("GITHUB_STEP_SUMMARY");
+          if (is_string($summary) && $summary !== "") {
+              file_put_contents($summary, "## Code coverage\n\n{$line}\n\nHTML report is the **coverage-report** artifact on this run.\n", FILE_APPEND);
+          }
+          '
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-report
+          path: |
+            coverage/html
+            coverage/clover.xml
+          if-no-files-found: warn
+          retention-days: 14
 
   security:
     name: Security scan

@@ -4,6 +4,8 @@ set -e
 cd /var/www/html
 
 export LOG_CHANNEL="${LOG_CHANNEL:-stderr}"
+# php -S workers swallow php://stderr; Railway tails PID 1.
+export LOG_STDERR_STREAM="${LOG_STDERR_STREAM:-/proc/1/fd/2}"
 
 echo "=== boot diagnostics (values hidden) ===" >&2
 echo "APP_ENV=${APP_ENV:-unset}" >&2
