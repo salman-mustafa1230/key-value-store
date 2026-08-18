@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  release:
+    types: [released]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  deploy:
+    name: Deploy to Railway
+    needs: [ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: "22"
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "RAILWAY_TOKEN is not set. Skipping deploy."
+            echo "Add GitHub secrets RAILWAY_TOKEN and RAILWAY_SERVICE, or use Railway GitHub autodeploy with Wait for CI."
+            exit 0
+          fi
+          if [ -z "$RAILWAY_SERVICE" ]; then
+            echo "RAILWAY_SERVICE is not set (the Railway service name, e.g. app)."
+            exit 1
+          fi
+          echo "Deploying ${{ github.event.release.tag_name }} to Railway."
+          railway up --ci --service "$RAILWAY_SERVICE"

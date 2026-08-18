@@ -1,0 +1,3 @@
+# PostgreSQL is the system of record
+
+Values are JSON; the queries are not. Latest and as-of are `(Key, Timestamp)` range lookups; the current snapshot is a cursor scan in Key order; a POST of up to ten Keys is one transaction. PostgreSQL JSONB holds the Value; B-tree indexes and transactions hold the rest. MySQL is the same shape but weaker JSON. MongoDB would be a document store with the same two-table design and no extra flexibility. DynamoDB/AP would make as-of and multi-Key atomic writes optional, which this API does not. Scale later is still replicas, then shard by Key, then a snapshot read model — not a different database.

@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: keystore-postgres
+    environment:
+      POSTGRES_DB: keystore
+      POSTGRES_USER: keystore
+      POSTGRES_PASSWORD: keystore
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: >
+      postgres
+      -c max_connections=100
+      -c idle_in_transaction_session_timeout=30000
+      -c statement_timeout=15000
+      -c lock_timeout=5000
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keystore -d keystore"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: keystore-app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PORT: 8000
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: keystore
+      DB_USERNAME: keystore
+      DB_PASSWORD: keystore
+      DB_URL: ""
+      DB_SSLMODE: prefer
+      DB_APPLICATION_NAME: key-value-store
+      DB_POOL_SIZE: 15
+      DB_PGBOUNCER: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
