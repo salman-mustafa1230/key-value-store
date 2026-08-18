@@ -172,9 +172,11 @@ A red security job fails the PR the same way a red test does. Dependabot (`.gith
 Use this if you want production to move only when you publish a version. That workflow does not run on pull requests, so **Deploy to Railway** does not appear on PR checks.
 
 1. In Railway: create a **project token** (Project settings → Tokens). Turn **off** GitHub autodeploy so merge to `main` does not ship.
-2. GitHub repo → **Settings** → **Secrets and variables** → **Actions**:
+2. GitHub repo → **Settings → Environments → Production** (create it if needed) → **Environment secrets**:
    - `RAILWAY_TOKEN` — that project token
    - `RAILWAY_SERVICE` — the app **service name** (not the Postgres plugin)
+   
+   Repository-level Actions secrets are **not** visible to this job. `release.yml` uses `environment: Production`.
 3. Merge to `main` (CI only). Then create a GitHub Release from that commit — tag `v1.0.0`, not a pre-release. The Release workflow re-runs PHPUnit, security, CodeQL, and the image build, then checks out the tag and runs `railway up --ci --service …`.
 
 ```bash
