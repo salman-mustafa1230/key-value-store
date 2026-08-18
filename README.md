@@ -137,7 +137,8 @@ Yes. GitHub Actions + Railway can run the whole pipeline. Pick **one** deploy tr
 | Event | What runs |
 | --- | --- |
 | Pull request | PHPUnit, **security scan**, CodeQL, then Docker image **build** (no push) |
-| Push / merge to `main` or `master` | Same checks, then **deploy** if Railway secrets exist |
+| Push / merge to `main` or `master` | Same checks. Production is **not** updated. |
+| GitHub Release (published, not a pre-release) | Same checks, then **deploy** that tag to Railway if secrets exist |
 
 Workflow: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
@@ -161,25 +162,33 @@ A red security job fails the PR the same way a red test does. Dependabot (`.gith
 
 [`AGENTS.md`](AGENTS.md) is in the repo so Copilot (or Cursor) follows this project’s review rules **if** you turn auto-review on. The file itself costs nothing. Automatic review on every PR is a Copilot paid feature: repo **Settings → Copilot → Code review → automatic reviews**, or request **Copilot** as a reviewer. Without that license, the free path is the Actions jobs above — they already run on every PR.
 
-### Option A — Railway watches GitHub (simplest)
+### Option A — Railway watches GitHub (deploys every merge)
 
 1. In Railway: service → **Settings** → **Source** → connect this GitHub repo, branch `main`.
 2. Enable **Wait for CI** so Railway stays in `WAITING` until this workflow is green, then builds the Dockerfile and deploys. A failed test **skips** the deploy.
-3. Do **not** set `RAILWAY_TOKEN` in GitHub, or the Actions deploy job will also ship the same commit.
+3. Do **not** set `RAILWAY_TOKEN` in GitHub. This path ignores GitHub Releases and ships `main` as soon as CI is green.
 
-### Option B — GitHub Actions deploys (what the `deploy` job does)
+### Option B — GitHub Release deploys (what the `deploy` job does)
 
-Use this if you want “tests → image build → `railway up`” all in Actions.
+Use this if you want production to move only when you publish a version.
 
-1. In Railway: create a **project token** (Project settings → Tokens). Optionally turn **off** GitHub autodeploy so only Actions deploys.
+1. In Railway: create a **project token** (Project settings → Tokens). Turn **off** GitHub autodeploy so merge to `main` does not ship.
 2. GitHub repo → **Settings** → **Secrets and variables** → **Actions**:
    - `RAILWAY_TOKEN` — that project token
    - `RAILWAY_SERVICE` — the app **service name** (not the Postgres plugin)
-3. Merge or push to `main`. After PHPUnit and Docker succeed, Actions runs `railway up --ci --service …`. Railway builds from the `Dockerfile` and waits until the release is live.
+3. Merge to `main` (checks only). Then create a GitHub Release from that commit — tag `v1.0.0`, not a pre-release. After PHPUnit and Docker succeed, Actions checks out the tag and runs `railway up --ci --service …`.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+gh release create v1.0.0 --generate-notes
+```
+
+Or GitHub → **Releases** → **Draft a new release**. Pre-releases do not deploy.
 
 Without those secrets, tests and the image build still run; deploy is skipped with a log line (so a dummy PR/merge stays green).
 
-Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. After merge, those plus **Deploy to Railway**.
+Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. After merge those run again. **Deploy to Railway** runs only when you publish a Release.
 
 ## Scale later (not in this submission)
 

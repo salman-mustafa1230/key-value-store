@@ -4,6 +4,8 @@ on:
   push:
     branches: [main, master]
   pull_request:
+  release:
+    types: [published]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -115,10 +117,12 @@ jobs:
   deploy:
     name: Deploy to Railway
     needs: [test, docker, security, codeql]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: github.event_name == 'release' && github.event.release.prerelease == false
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
 
       - uses: actions/setup-node@v5
         with:
@@ -141,4 +145,5 @@ jobs:
             echo "RAILWAY_SERVICE is not set (the Railway service name, e.g. app)."
             exit 1
           fi
+          echo "Deploying ${{ github.event.release.tag_name }} to Railway."
           railway up --ci --service "$RAILWAY_SERVICE"
