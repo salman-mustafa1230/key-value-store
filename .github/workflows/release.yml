@@ -16,7 +16,7 @@ jobs:
     name: CI
     uses: ./.github/workflows/ci.yml
     permissions:
-      actions: read
+      actions: write
       contents: read
       security-events: write
 
