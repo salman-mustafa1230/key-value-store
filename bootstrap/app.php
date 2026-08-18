@@ -8,6 +8,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->reportable(function (Throwable $e): void {
+            fwrite(STDERR, $e->__toString().PHP_EOL);
+        });
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request): bool => $request->is('api/*')
                 || $request->expectsJson(),

@@ -3,7 +3,16 @@ set -e
 
 cd /var/www/html
 
-# Rebuild package manifest without require-dev (Pail, Collision, …).
+export LOG_CHANNEL="${LOG_CHANNEL:-stderr}"
+
+echo "=== boot diagnostics (values hidden) ===" >&2
+echo "APP_ENV=${APP_ENV:-unset}" >&2
+echo "LOG_CHANNEL=${LOG_CHANNEL}" >&2
+echo "DB_CONNECTION=${DB_CONNECTION:-unset}" >&2
+echo "DB_SSLMODE=${DB_SSLMODE:-unset}" >&2
+if [ -n "${APP_KEY:-}" ]; then echo "APP_KEY=set" >&2; else echo "APP_KEY=MISSING — php artisan key:generate --show" >&2; fi
+if [ -n "${DB_URL:-}${DATABASE_URL:-}" ]; then echo "DB_URL=set" >&2; else echo "DB_URL=MISSING — set DB_URL to \${{Postgres.DATABASE_URL}}" >&2; fi
+
 php artisan package:discover --ansi --no-interaction
 
 PORT="${PORT:-8000}"
@@ -27,7 +36,16 @@ if ! kill -0 "${SERVE_PID}" 2>/dev/null; then
   exit 1
 fi
 
-php artisan migrate --force --no-interaction || echo "migrate failed; /health is still up" >&2
+echo "=== migrate ===" >&2
+set +e
+php artisan migrate --force --no-interaction -v > /tmp/migrate.log 2>&1
+MIGRATE_STATUS=$?
+set -e
+cat /tmp/migrate.log >&2
+if [ "${MIGRATE_STATUS}" -ne 0 ]; then
+  echo "=== migrate failed (exit ${MIGRATE_STATUS}). /health stays up; API will 500 until DB is reachable. ===" >&2
+fi
+
 php artisan l5-swagger:generate --no-interaction || true
 
 wait "${SERVE_PID}"

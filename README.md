@@ -105,7 +105,7 @@ Railway does **not** run `docker-compose.yml`. Compose is local Postgres only. P
    - `DB_URL=${{Postgres.DATABASE_URL}}` (reference the plugin; Laravel also reads `DATABASE_URL`)
    - `APP_URL` — the public Railway domain once you generate it
 4. Generate a public domain. Health check: `GET /health` (Railway uses this path; timeout is 300s so migrate-on-boot can finish).
-5. Migrations run on container start (`docker/start.sh`). The process listens on Railway’s `PORT`.
+5. Migrations run on container start (`docker/start.sh`). The process listens on Railway’s `PORT`. Deploy logs print migrate output and whether `APP_KEY` / `DB_URL` are set (not the secret values). HTTP 500s also go to stderr.
 
 Free-tier notes: this image uses `php artisan serve` so memory stays low. Cron/queue workers are not required for this API. If the instance sleeps, the first request after wake may run migrations again (`migrate` is idempotent).
 
