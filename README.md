@@ -12,7 +12,7 @@ Returning every Key in one JSON array is correct for a tiny dataset and will not
 
 ```json
 {
-  "data": [{ "key": "mykey", "value": "value1" }],
+  "data": [{ "key": "mykey", "value": "value1", "timestamp": 1440568800 }],
   "next_cursor": null
 }
 ```
@@ -28,7 +28,7 @@ Walk `next_cursor` until it is null. Default page size is 50; maximum is 1000. H
 | `POST` | `/api/v1/object` | 201 `{ "data": [{ "key", "value", "timestamp" }] }` — 1–10 Key/Value pairs, one Timestamp for the request, all-or-nothing |
 | `GET` | `/api/v1/object/{key}` | Raw JSON Value (latest) |
 | `GET` | `/api/v1/object/{key}?timestamp=UNIX` | Raw JSON Value as of that UNIX second (inclusive) |
-| `GET` | `/api/v1/object/get_all_records` | Current snapshot page |
+| `GET` | `/api/v1/object/get_all_records` | `{ "data": [{ "key", "value", "timestamp" }], "next_cursor" }` — current snapshot page |
 | `GET` | `/swagger` | Swagger UI |
 
 Errors: `{ "error": { "code", "message" } }` with 400 / 404 / 500.

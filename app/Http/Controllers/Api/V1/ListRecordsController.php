@@ -20,6 +20,7 @@ final class ListRecordsController extends Controller
             'data' => array_map(fn (Version $version): array => [
                 'key' => $version->key->value,
                 'value' => $version->value->json,
+                'timestamp' => $version->unixSeconds(),
             ], $page->items),
             'next_cursor' => $page->nextCursor,
         ]);
