@@ -7,6 +7,7 @@ namespace Tests\Unit;
 use App\Domain\KeyStore\Exceptions\InvalidKey;
 use App\Domain\KeyStore\Exceptions\ReservedKey;
 use App\Domain\KeyStore\Exceptions\ValueTooDeep;
+use App\Domain\KeyStore\Exceptions\ValueTooLarge;
 use App\Domain\KeyStore\Key;
 use App\Domain\KeyStore\Value;
 use PHPUnit\Framework\TestCase;
@@ -56,5 +57,23 @@ final class KeyAndValueTest extends TestCase
     {
         $this->expectException(ValueTooDeep::class);
         Value::fromJson((object) ['a' => [1, (object) ['b' => 1]]]);
+    }
+
+    public function test_write_rejects_wide_arrays(): void
+    {
+        $this->expectException(ValueTooLarge::class);
+        Value::fromWrite(range(0, 100), 8192, 100);
+    }
+
+    public function test_write_rejects_oversized_encoded_value(): void
+    {
+        $this->expectException(ValueTooLarge::class);
+        Value::fromWrite(str_repeat('a', 9000), 8192, 100);
+    }
+
+    public function test_write_accepts_value_within_limits(): void
+    {
+        $value = Value::fromWrite(['a', 'b', 'c'], 8192, 100);
+        $this->assertSame(['a', 'b', 'c'], $value->json);
     }
 }

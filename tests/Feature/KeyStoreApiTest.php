@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Domain\KeyStore\Clock;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 final class KeyStoreApiTest extends TestCase
@@ -184,5 +185,34 @@ final class KeyStoreApiTest extends TestCase
         ], json_encode(['not', 'an', 'object']))
             ->assertStatus(400)
             ->assertJsonPath('error.code', 'invalid_payload');
+    }
+
+    public function test_oversized_body_is_413(): void
+    {
+        config(['keystore.max_body_bytes' => 64]);
+
+        $this->postJson('/api/v1/object', ['k' => str_repeat('a', 80)])
+            ->assertStatus(413)
+            ->assertJsonPath('error.code', 'payload_too_large');
+    }
+
+    public function test_oversized_value_is_400(): void
+    {
+        config(['keystore.max_value_bytes' => 32]);
+
+        $this->postJson('/api/v1/object', ['k' => str_repeat('a', 80)])
+            ->assertStatus(400)
+            ->assertJsonPath('error.code', 'value_too_large');
+    }
+
+    public function test_rate_limit_is_429(): void
+    {
+        config(['keystore.rate_limit_per_minute' => 1]);
+        Cache::flush();
+
+        $this->postJson('/api/v1/object', ['k' => 'one'])->assertCreated();
+        $this->postJson('/api/v1/object', ['k' => 'two'])
+            ->assertStatus(429)
+            ->assertJsonPath('error.code', 'rate_limited');
     }
 }

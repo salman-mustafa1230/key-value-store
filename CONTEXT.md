@@ -9,7 +9,7 @@ The identity of a stored item. A Key is 1–64 characters, `^[A-Za-z0-9][A-Za-z0
 _Avoid_: Object, record, name, id, field
 
 **Value**:
-The payload of a Version. Any JSON value — object, array, string, number, boolean, null, or empty string — whose nesting depth is at most two (arrays count as a level). Null and empty string are stored Values, not absence of a Key.
+The payload of a Version. Any JSON value — object, array, string, number, boolean, null, or empty string — whose nesting depth is at most two (arrays count as a level). On write, encoded size is at most 8 KiB and each object or array has at most 100 members. Null and empty string are stored Values, not absence of a Key.
 _Avoid_: Blob, object, data, body, document
 
 **Version**:

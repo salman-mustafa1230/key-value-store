@@ -5,9 +5,11 @@ use App\Domain\KeyStore\Exceptions\PersistenceFailed;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Throwable;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -15,7 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
         then: function (): void {
-            Route::middleware('api')
+            Route::middleware(['api', 'throttle:keystore'])
                 ->prefix('api/v1')
                 ->name('api.v1.')
                 ->group(base_path('routes/api/v1.php'));
@@ -28,14 +30,17 @@ return Application::configure(basePath: dirname(__DIR__))
         // 404/400 must not go through Monolog. If the log stream is closed
         // (php -S workers on Railway), report() throws and the kernel never
         // renders — empty HTML 500, nothing in Railway logs.
-        $exceptions->dontReport(ClientError::class);
+        $exceptions->dontReport([
+            ClientError::class,
+            ThrottleRequestsException::class,
+        ]);
 
-        $exceptions->reportable(function (\Throwable $e): void {
+        $exceptions->reportable(function (Throwable $e): void {
             try {
                 $line = $e->__toString();
                 error_log($line);
                 fwrite(STDERR, $line.PHP_EOL);
-            } catch (\Throwable) {
+            } catch (Throwable) {
             }
         });
 
@@ -67,15 +72,21 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
+            $status = $e->getStatusCode();
+            $code = $status === 429 ? 'rate_limited' : 'http_error';
+            $message = $status === 429
+                ? 'Too many requests. Retry later.'
+                : ($e->getMessage() !== '' ? $e->getMessage() : 'HTTP error.');
+
             return response()->json([
                 'error' => [
-                    'code' => 'http_error',
-                    'message' => $e->getMessage() !== '' ? $e->getMessage() : 'HTTP error.',
+                    'code' => $code,
+                    'message' => $message,
                 ],
-            ], $e->getStatusCode());
+            ], $status);
         });
 
-        $exceptions->render(function (\Throwable $e, Request $request) {
+        $exceptions->render(function (Throwable $e, Request $request) {
             if (! $request->is('api/*')) {
                 return null;
             }
