@@ -34,7 +34,7 @@ use OpenApi\Attributes as OA;
     required: ['key', 'value', 'timestamp'],
     properties: [
         new OA\Property(property: 'key', type: 'string', example: 'mykey', pattern: '^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$'),
-        new OA\Property(property: 'value', description: 'Stored JSON value (any type, max nesting depth 2).', example: 'value1'),
+        new OA\Property(property: 'value', description: 'Stored JSON value (any type, max nesting depth 2, max 8 KiB encoded, max 100 members per object/array).', example: 'value1'),
         new OA\Property(property: 'timestamp', type: 'integer', example: 1440568800, description: 'UNIX seconds (UTC) assigned by the server.'),
     ],
     type: 'object',
@@ -42,7 +42,7 @@ use OpenApi\Attributes as OA;
 #[OA\Post(
     path: '/api/v1/object',
     operationId: 'storeObjects',
-    description: 'Accepts a JSON object of 1–10 Key → Value pairs. All pairs share one Timestamp and commit atomically. Distinct times require distinct POSTs.',
+    description: 'Accepts a JSON object of 1–10 Key → Value pairs (body ≤ 64 KiB). All pairs share one Timestamp and commit atomically. Distinct times require distinct POSTs.',
     summary: 'Write one or more keys',
     tags: ['Objects'],
     requestBody: new OA\RequestBody(
@@ -74,6 +74,8 @@ use OpenApi\Attributes as OA;
             ),
         ),
         new OA\Response(response: 400, description: 'Validation error', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
+        new OA\Response(response: 413, description: 'Request body too large', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
+        new OA\Response(response: 429, description: 'Too many requests', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
         new OA\Response(response: 500, description: 'Write failed after retries', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
     ],
 )]
@@ -115,6 +117,7 @@ use OpenApi\Attributes as OA;
             ),
         ),
         new OA\Response(response: 400, description: 'Invalid cursor or limit', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
+        new OA\Response(response: 429, description: 'Too many requests', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
     ],
 )]
 #[OA\Get(
@@ -144,6 +147,7 @@ use OpenApi\Attributes as OA;
         ),
         new OA\Response(response: 400, description: 'Invalid key or timestamp', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
         new OA\Response(response: 404, description: 'No Version for this question', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
+        new OA\Response(response: 429, description: 'Too many requests', content: new OA\JsonContent(ref: '#/components/schemas/ErrorBody')),
     ],
 )]
 final class OpenApiSpec {}

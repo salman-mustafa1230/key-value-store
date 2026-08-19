@@ -1,9 +1,10 @@
 # Versioned key-value store
 
-HTTP API for a version-controlled key-value store. PHP/Laravel, PostgreSQL.
+Append-only versioned key-value HTTP API. Laravel, PostgreSQL, as-of reads, cursor-listed current snapshot.
 
 - **Live:** [https://key-value-store-app-production.up.railway.app/swagger](https://key-value-store-app-production.up.railway.app/swagger)
 - **Source:** [https://github.com/salman-mustafa1230/key-value-store](https://github.com/salman-mustafa1230/key-value-store)
+- **Deploy:** GitHub Release → Railway (Option B). Merge to `main` does not ship; production moves when you publish a tag.
 
 Domain language lives in [`CONTEXT.md`](CONTEXT.md). Decisions live in [`docs/adr/`](docs/adr/).
 
@@ -34,22 +35,25 @@ Walk `next_cursor` until it is null. Default page size is 50; maximum is 1000. H
 | `GET` | `/api/v1/object/get_all_records` | `{ "data": [{ "key", "value", "timestamp" }], "next_cursor" }` — current snapshot page |
 | `GET` | `/swagger` | Swagger UI |
 
-Errors: `{ "error": { "code", "message" } }` with 400 / 404 / 500.
+Errors: `{ "error": { "code", "message" } }` with 400 / 404 / 413 / 429 / 500. POST body max 64 KiB; each Value max 8 KiB and 100 members. API is 60 requests/minute per IP.
 
 Interactive docs: [production Swagger](https://key-value-store-app-production.up.railway.app/swagger) or [http://localhost:8000/swagger](http://localhost:8000/swagger) locally. OpenAPI JSON is at `/docs`.
 
 ## Folder structure
 
-This is one bounded context (**KeyStore**) split so a second feature does not land in the same files.
+One bounded context (**KeyStore**), split so a second feature does not land in the same files.
 
-| Path | Role |
-| --- | --- |
-| `app/Domain/KeyStore` | Rules and language (Key, Value, Version). No HTTP, no SQL. |
-| `app/Application/KeyStore` | Use cases: write, read, list. |
-| `app/Http/Controllers/Api/V1` | HTTP adapters for **this** API version. |
-| `app/Infrastructure/Persistence/KeyStore` | Postgres. Swap later without touching domain. |
-| `routes/web.php` | Browser/meta only (`/`, not the API). |
-| `routes/api/v1/*.php` | One file per feature. `objects.php` is the key store. Add `users.php` later; `v1.php` loads every file in that folder. |
+```
+app/Domain/KeyStore/                      rules (Key, Value, Version); no HTTP, no SQL
+app/Application/KeyStore/                 use cases: write, read, list
+app/Http/Controllers/Api/V1/              HTTP adapters for this API version
+app/Infrastructure/Persistence/KeyStore/  Postgres; swap later without touching domain
+routes/web.php                            `/` and `/health` only
+routes/api/v1/                            one file per feature (`objects.php` is the key store)
+docs/adr/                                 decisions
+.github/workflows/ci.yml                  PHPUnit, coverage, security, image build
+.github/workflows/release.yml             same checks, then deploy that tag to Railway
+```
 
 A new feature: domain + application folders, a controller under `Api/V1`, a new file in `routes/api/v1/`. A breaking HTTP change: `routes/api/v2/` plus another prefix group in `bootstrap/app.php`. `web.php` stays small on purpose.
 
@@ -134,15 +138,15 @@ Each session also gets production defaults from [`config/database.php`](config/d
 
 Put PgBouncer (transaction mode) in front when a single process is no longer enough. That is still a later scale step; the knobs above are the contract it must honour.
 
-## CI/CD (GitHub → Railway)
+## CI/CD — Option B (this repo)
 
-Yes. GitHub Actions + Railway can run the whole pipeline. Pick **one** deploy trigger so you do not ship twice.
+Production deploys from a **GitHub Release**, not from merge to `main`. Railway GitHub autodeploy is off so a green PR cannot ship by itself.
 
 | Event | Workflow | What runs |
 | --- | --- | --- |
-| Pull request | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PHPUnit with a coverage report, security scan, CodeQL, then Docker image **build** (no push). Docker waits for the three checks. |
-| Push / merge to `main` or `master` | same | Same checks. Production is **not** updated. Deploy is not in this workflow. |
-| GitHub Release (not a pre-release) | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Re-runs those checks, then **deploys** that tag to Railway if secrets exist |
+| Pull request | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PHPUnit with a coverage report, security scan, CodeQL, then Docker image **build** (no push). Docker waits for the three checks. **No deploy.** |
+| Push / merge to `main` | — | **No CI, no deploy.** CI already ran on the PR. |
+| GitHub Release (not a pre-release) | [`.github/workflows/release.yml`](.github/workflows/release.yml) | Re-runs those checks, then **deploys that tag** to Railway |
 
 On every PR:
 
@@ -164,23 +168,17 @@ A red security job fails the PR the same way a red test does. Dependabot (`.gith
 
 [`AGENTS.md`](AGENTS.md) is in the repo so Copilot (or Cursor) follows this project’s review rules **if** you turn auto-review on. The file itself costs nothing. Automatic review on every PR is a Copilot paid feature: repo **Settings → Copilot → Code review → automatic reviews**, or request **Copilot** as a reviewer. Without that license, the free path is the Actions jobs above — they already run on every PR.
 
-### Option A — Railway watches GitHub (deploys every merge)
+### Ship a version
 
-1. In Railway: service → **Settings** → **Source** → connect this GitHub repo, branch `main`.
-2. Enable **Wait for CI** so Railway stays in `WAITING` until this workflow is green, then builds the Dockerfile and deploys. A failed test **skips** the deploy.
-3. Do **not** set `RAILWAY_TOKEN` in GitHub. This path ignores GitHub Releases and ships `main` as soon as CI is green.
+`release.yml` does not run on pull requests, so **Deploy to Railway** never appears on PR checks.
 
-### Option B — GitHub Release deploys ([`release.yml`](.github/workflows/release.yml))
-
-Use this if you want production to move only when you publish a version. That workflow does not run on pull requests, so **Deploy to Railway** does not appear on PR checks.
-
-1. In Railway: create a **project token** (Project settings → Tokens). Turn **off** GitHub autodeploy so merge to `main` does not ship.
-2. GitHub repo → **Settings → Environments → Production** (create it if needed) → **Environment secrets**:
+1. In Railway: create a **project token** (Project settings → Tokens). Keep **GitHub autodeploy off**.
+2. GitHub repo → **Settings → Environments → Production** → **Environment secrets**:
    - `RAILWAY_TOKEN` — that project token
    - `RAILWAY_SERVICE` — the app **service name** (not the Postgres plugin)
-   
+
    Repository-level Actions secrets are **not** visible to this job. `release.yml` uses `environment: Production`.
-3. Merge to `main` (CI only). Then create a GitHub Release from that commit — tag `v1.0.0`, not a pre-release. The Release workflow re-runs PHPUnit, security, CodeQL, and the image build, then checks out the tag and runs `railway up --ci --service …`.
+3. Merge to `main` (CI only). Then publish a Release from that commit — tag `v1.0.0`, not a pre-release. The workflow re-runs PHPUnit, security, CodeQL, and the image build, checks out the tag, and runs `railway up --ci --service …`.
 
 ```bash
 git tag v1.0.0
@@ -190,9 +188,13 @@ gh release create v1.0.0 --generate-notes
 
 Or GitHub → **Releases** → **Draft a new release**. Pre-releases do not deploy.
 
-Without those secrets, tests and the image build still run; deploy is skipped with a log line (so a dummy PR/merge stays green).
+Without those secrets, tests and the image build still run; deploy is skipped with a log line.
 
-Dummy PR: open any small PR against `main` → you should see **PHPUnit**, **Security scan**, **CodeQL**, and **Build image**. There is no Deploy job on PRs, and merge to `main` does not start CI again. **Deploy to Railway** is the Release workflow, only when you publish a Release.
+Dummy PR: open any small PR against `main` → **PHPUnit**, **Security scan**, **CodeQL**, **Build image**. No Deploy job on PRs, and merge to `main` does not start CI again. **Deploy to Railway** runs only on a published Release.
+
+### Not used — Option A (Railway watches GitHub)
+
+Autodeploy on every green merge to `main`. This repo does not use that path: it would ship twice if both A and B were on.
 
 ## Scale later (not in this submission)
 

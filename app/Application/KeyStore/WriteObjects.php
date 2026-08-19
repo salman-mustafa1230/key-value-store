@@ -41,7 +41,11 @@ final class WriteObjects
         foreach ($pairs as $rawKey => $rawValue) {
             $versions[] = new Version(
                 Key::parse((string) $rawKey),
-                Value::fromJson($rawValue),
+                Value::fromWrite(
+                    $rawValue,
+                    (int) config('keystore.max_value_bytes', Value::MAX_ENCODED_BYTES),
+                    (int) config('keystore.max_value_breadth', Value::MAX_BREADTH),
+                ),
                 $recordedAt,
             );
         }

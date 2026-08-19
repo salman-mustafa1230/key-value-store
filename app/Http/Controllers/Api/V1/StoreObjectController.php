@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Application\KeyStore\WriteObjects;
 use App\Domain\KeyStore\Exceptions\InvalidPayload;
+use App\Domain\KeyStore\Exceptions\PayloadTooLarge;
 use App\Domain\KeyStore\Version;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,14 @@ final class StoreObjectController extends Controller
 {
     public function __invoke(Request $request, WriteObjects $write): JsonResponse
     {
-        $decoded = json_decode($request->getContent());
+        $body = $request->getContent();
+        $maxBody = (int) config('keystore.max_body_bytes', 65_536);
+
+        if (strlen($body) > $maxBody) {
+            throw new PayloadTooLarge($maxBody);
+        }
+
+        $decoded = json_decode($body);
 
         if (! is_object($decoded)) {
             throw new InvalidPayload;
